@@ -4,7 +4,7 @@ local UIViewHandler = mod:original_require("scripts/managers/ui/ui_view_handler"
 local jsj_definition = mod:io_dofile("JishuJun/scripts/mods/JishuJun/jsj_definition")
 local mission_node_definition = mod:io_dofile("JishuJun/scripts/mods/JishuJun/mission_node_definition")
 
-mod.version = "v9a"
+mod.version = "v10"
 
 mod.enemy_health = mod:persistent_table("enemy_health")
 mod.cutscene_seen = mod:persistent_table("cutscene_seen")
@@ -200,6 +200,38 @@ mod.on_all_mods_loaded = function ()
 	mod.recreate_hud()
 end
 
+mod.is_weakened = function (unit, breed)
+    local is_weakened = false
+
+    if not breed.is_boss or breed.ignore_weakened_boss_name then
+        return is_weakened
+    end
+
+    local health_extension = ScriptUnit.extension(unit, "health_system")
+    local max_health = health_extension:max_health()
+    local initial_max_health = math.floor(Managers.state.difficulty:get_minion_max_health(breed.name))
+
+    if max_health < initial_max_health then
+        is_weakened = true
+    else
+        local havoc_mananger = Managers.state.havoc
+
+        if havoc_mananger:is_havoc() then
+            local havoc_health_override_value = havoc_mananger:get_modifier_value("modify_monster_health")
+
+            if havoc_health_override_value then
+                local multiplied_max_health = initial_max_health + initial_max_health * havoc_health_override_value
+
+                if max_health < multiplied_max_health then
+                    is_weakened = true
+                end
+            end
+        end
+    end
+
+    return is_weakened
+end
+
 mod.set_data = function (name, value, is_self)
 	mod.data[name] = value
 	if not is_self then
@@ -385,7 +417,7 @@ mod:hook(CLASS.AttackReportManager, "add_attack_result", function (
 					if table.array_contains(boss_breeds, breed_name) then
 						local initial_max_health = Managers.state.difficulty:get_minion_max_health(breed_name)
 						mod.increase_data("boss_damage", actual_damage, is_self)
-						if max_health < initial_max_health then
+						if mod.is_weakened(attacked_unit, breed) then
 							mod.increase_data("weak_boss_damage", actual_damage, is_self)
 						else
 							mod.increase_data("normal_boss_damage", actual_damage, is_self)
