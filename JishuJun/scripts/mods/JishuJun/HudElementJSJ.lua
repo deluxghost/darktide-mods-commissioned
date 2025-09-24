@@ -251,8 +251,7 @@ HudElementJSJ.update = function (self, dt, t, ui_renderer, render_settings, inpu
 	HudElementJSJ.super.update(self, dt, t, ui_renderer, render_settings, input_service)
 
 	local node1, node2 = mod.get_mission_node_status()
-	mod.set_data("node1", node1, false)
-	mod.set_data("node2", node2, false)
+	mod.set_node_data(node1, node2, false)
 
 	self._widgets_by_name.background.style.background.size[2] = (num_data + 1) * realtime_line_height + num_data_endgame * endgame_only_line_height + 119
 

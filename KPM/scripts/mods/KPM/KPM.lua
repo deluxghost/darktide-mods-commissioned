@@ -38,6 +38,7 @@ local melee_breeds = {
 local ranged_breeds = {
 	"cultist_gunner",
 	"renegade_gunner",
+	"renegade_plasma_gunner",
 	"cultist_shocktrooper",
 	"renegade_shocktrooper",
 	"chaos_ogryn_gunner",

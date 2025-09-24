@@ -18,6 +18,7 @@ local elite_breeds = {
 	"chaos_ogryn_executor",
 	"cultist_gunner",
 	"renegade_gunner",
+	"renegade_plasma_gunner",
 	"cultist_shocktrooper",
 	"renegade_shocktrooper",
 	"chaos_ogryn_gunner",

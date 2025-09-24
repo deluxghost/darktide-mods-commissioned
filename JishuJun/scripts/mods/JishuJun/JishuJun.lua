@@ -4,7 +4,7 @@ local UIViewHandler = mod:original_require("scripts/managers/ui/ui_view_handler"
 local jsj_definition = mod:io_dofile("JishuJun/scripts/mods/JishuJun/jsj_definition")
 local mission_node_definition = mod:io_dofile("JishuJun/scripts/mods/JishuJun/mission_node_definition")
 
-mod.version = "v10"
+mod.version = "v11"
 
 mod.enemy_health = mod:persistent_table("enemy_health")
 mod.cutscene_seen = mod:persistent_table("cutscene_seen")
@@ -41,6 +41,7 @@ local melee_elite_breeds = {
 local ranged_elite_breeds = {
 	"cultist_gunner",
 	"renegade_gunner",
+	"renegade_plasma_gunner",
 	"renegade_radio_operator",
 	"cultist_shocktrooper",
 	"renegade_shocktrooper",
@@ -161,6 +162,27 @@ mod.get_score_template = function ()
 	return template
 end
 
+local function get_objective_group_id()
+	local level = Application.flow_callback_context_level()
+	local unit_spawner_manager = Managers.state.unit_spawner
+
+	if level then
+		return unit_spawner_manager:index_by_level(level)
+	else
+		local unit = Application.flow_callback_context_unit()
+
+		if unit then
+			level = Unit.level(unit)
+
+			if level then
+				return unit_spawner_manager:index_by_level(level)
+			end
+		end
+	end
+
+	return 0
+end
+
 mod.get_mission_node_status = function ()
 	if not Managers.mechanism or not Managers.mechanism._mechanism or not Managers.mechanism._mechanism._mechanism_data then
 		return false, false
@@ -176,10 +198,11 @@ mod.get_mission_node_status = function ()
 		return false, false
 	end
 
-	if mission_objective_system._active_objectives[node_data.node2] or mission_objective_system._completed_objectives[node_data.node2] then
+	local obj_group = mission_objective_system._objective_groups[get_objective_group_id()]
+	if obj_group.active_objectives[node_data.node2] or obj_group.completed_objectives[node_data.node2] then
 		return true, true
 	end
-	if mission_objective_system._active_objectives[node_data.node1] or mission_objective_system._completed_objectives[node_data.node1] then
+	if obj_group.active_objectives[node_data.node1] or obj_group.completed_objectives[node_data.node1] then
 		return true, false
 	end
 	return false, false
@@ -201,35 +224,36 @@ mod.on_all_mods_loaded = function ()
 end
 
 mod.is_weakened = function (unit, breed)
-    local is_weakened = false
+	local is_weakened = false
 
-    if not breed.is_boss or breed.ignore_weakened_boss_name then
-        return is_weakened
-    end
+	if not breed.is_boss or breed.ignore_weakened_boss_name then
+		return is_weakened
+	end
 
-    local health_extension = ScriptUnit.extension(unit, "health_system")
-    local max_health = health_extension:max_health()
-    local initial_max_health = math.floor(Managers.state.difficulty:get_minion_max_health(breed.name))
+	local health_extension = ScriptUnit.extension(unit, "health_system")
+	local max_health = health_extension:max_health()
+	local initial_max_health = math.floor(Managers.state.difficulty:get_minion_max_health(breed.name))
 
-    if max_health < initial_max_health then
-        is_weakened = true
-    else
-        local havoc_mananger = Managers.state.havoc
+	if max_health < initial_max_health then
+		is_weakened = true
+	else
+		local is_havoc = Managers.state.difficulty:get_parsed_havoc_data()
 
-        if havoc_mananger:is_havoc() then
-            local havoc_health_override_value = havoc_mananger:get_modifier_value("modify_monster_health")
+		if is_havoc then
+			local havoc_extension = Managers.state.game_mode:game_mode():extension("havoc")
+			local havoc_health_override_value = havoc_extension and havoc_extension:get_modifier_value("modify_monster_health")
 
-            if havoc_health_override_value then
-                local multiplied_max_health = initial_max_health + initial_max_health * havoc_health_override_value
+			if havoc_health_override_value then
+				local multiplied_max_health = initial_max_health + initial_max_health * havoc_health_override_value
 
-                if max_health < multiplied_max_health then
-                    is_weakened = true
-                end
-            end
-        end
-    end
+				if max_health < multiplied_max_health then
+					is_weakened = true
+				end
+			end
+		end
+	end
 
-    return is_weakened
+	return is_weakened
 end
 
 mod.set_data = function (name, value, is_self)
@@ -237,6 +261,28 @@ mod.set_data = function (name, value, is_self)
 	if not is_self then
 		mod.data_noself[name] = value
 	end
+end
+
+mod.set_node_data = function (node1, node2, won)
+	local onode1, onode2, owon = mod.data["node1"], mod.data["node2"], mod.data["won"]
+	if node1 or onode1 then
+		node1 = true
+	end
+	if node2 or onode2 then
+		node1 = true
+		node2 = true
+	end
+	if won or owon then
+		node1 = true
+		node2 = true
+		won = true
+	end
+	mod.data["node1"] = node1
+	mod.data_noself["node1"] = node1
+	mod.data["node2"] = node2
+	mod.data_noself["node2"] = node2
+	mod.data["won"] = won
+	mod.data_noself["won"] = won
 end
 
 mod.increase_data = function (name, value, is_self)
@@ -263,7 +309,7 @@ local function end_game_score(won)
 	if timer then
 		timer_min = timer / 60
 	end
-	mod.set_data("won", won, false)
+	mod.set_node_data(false, false, won)
 	mod.set_data("reported", true, false)
 
 	local msg_list = { "本局详细数据：" }
