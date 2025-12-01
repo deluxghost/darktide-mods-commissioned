@@ -397,9 +397,9 @@ local function update_player_ammo(self, player)
 			local inventory_component = unit_data_extension:read_component(slot_id)
 
 			if inventory_component then
-				local max_clip = inventory_component.max_ammunition_clip or 0
+				local max_clip = inventory_component.max_ammunition_clip and inventory_component.max_ammunition_clip[1] or 0
 				local max_reserve = inventory_component.max_ammunition_reserve or 0
-				local current_clip = inventory_component.current_ammunition_clip or 0
+				local current_clip = inventory_component.current_ammunition_clip and inventory_component.current_ammunition_clip[1] or 0
 				local current_reserve = inventory_component.current_ammunition_reserve or 0
 				total_current_ammo = total_current_ammo + current_clip + current_reserve
 				total_max_ammo = total_max_ammo + max_clip + max_reserve

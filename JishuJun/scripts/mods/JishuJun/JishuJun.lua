@@ -4,10 +4,11 @@ local UIViewHandler = mod:original_require("scripts/managers/ui/ui_view_handler"
 local jsj_definition = mod:io_dofile("JishuJun/scripts/mods/JishuJun/jsj_definition")
 local mission_node_definition = mod:io_dofile("JishuJun/scripts/mods/JishuJun/mission_node_definition")
 
-mod.version = "v11"
+mod.version = "v12"
 
 mod.enemy_health = mod:persistent_table("enemy_health")
 mod.cutscene_seen = mod:persistent_table("cutscene_seen")
+mod.obj_record = mod:persistent_table("obj_record")
 mod.data = mod:persistent_table("data")
 mod.data_noself = mod:persistent_table("data_noself")
 mod:register_hud_element({
@@ -73,6 +74,9 @@ mod.on_game_state_changed = function (status, state_name)
 	if state_name == "StateGameplay" and status == "enter" then
 		for key in pairs(mod.enemy_health) do
 			mod.enemy_health[key] = nil
+		end
+		for key in pairs(mod.obj_record) do
+			mod.obj_record[key] = nil
 		end
 		for key in pairs(mod.data) do
 			mod.data[key] = nil
@@ -183,6 +187,21 @@ local function get_objective_group_id()
 	return 0
 end
 
+mod:hook_safe("MissionObjectiveSystem", "start_mission_objective", function (self, objective_name, group_id, progression, second_progression, increment, max_incremented, stage)
+	if not Managers.mechanism or not Managers.mechanism._mechanism or not Managers.mechanism._mechanism._mechanism_data then
+		return
+	end
+	local mechanism_data = Managers.mechanism._mechanism._mechanism_data
+	local mission_name = mechanism_data.mission_name
+	local node_data = mission_node_definition[mission_name]
+	if not node_data then
+		return
+	end
+	if objective_name == node_data.node1 or objective_name == node_data.node2 then
+		mod.obj_record[objective_name] = true
+	end
+end)
+
 mod.get_mission_node_status = function ()
 	if not Managers.mechanism or not Managers.mechanism._mechanism or not Managers.mechanism._mechanism._mechanism_data then
 		return false, false
@@ -199,10 +218,10 @@ mod.get_mission_node_status = function ()
 	end
 
 	local obj_group = mission_objective_system._objective_groups[get_objective_group_id()]
-	if obj_group.active_objectives[node_data.node2] or obj_group.completed_objectives[node_data.node2] then
+	if obj_group.active_objectives[node_data.node2] or mod.obj_record[node_data.node2] then
 		return true, true
 	end
-	if obj_group.active_objectives[node_data.node1] or obj_group.completed_objectives[node_data.node1] then
+	if obj_group.active_objectives[node_data.node1] or mod.obj_record[node_data.node1] then
 		return true, false
 	end
 	return false, false
