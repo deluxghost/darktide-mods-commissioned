@@ -73,39 +73,39 @@ local definitions = {
 				},
 			},
 		}, "jsj_area"),
-		mode_indicator = UIWidget.create_definition({
-			{
-				pass_type = "text",
-				value = "当前模式：",
-				style = {
-					font_type = "proxima_nova_bold",
-					font_size = 19,
-					drop_shadow = true,
-					text_vertical_alignment = "top",
-					text_horizontal_alignment = "center",
-					text_color = Color.light_gray(255, true),
-					offset = { -50, 55, 2 },
-				},
-			},
-			-- {
-			-- 	pass_type = "text",
-			-- 	value_id = "self_mode_text",
-			-- 	value = "",
-			-- 	style = {
-			-- 		font_type = "proxima_nova_bold",
-			-- 		font_size = 19,
-			-- 		drop_shadow = true,
-			-- 		text_vertical_alignment = "top",
-			-- 		text_horizontal_alignment = "center",
-			-- 		text_color = Color.light_gray(255, true),
-			-- 		offset = { 50, 55, 2 },
-			-- 	},
-			-- 	visibility_function = function (content, style)
-			-- 		content.self_mode_text = mod:get("self_mode") and "包含自己" or "排除自己"
-			-- 		return true
-			-- 	end,
-			-- },
-		}, "jsj_area"),
+		-- mode_indicator = UIWidget.create_definition({
+		-- 	{
+		-- 		pass_type = "text",
+		-- 		value = "当前模式：",
+		-- 		style = {
+		-- 			font_type = "proxima_nova_bold",
+		-- 			font_size = 19,
+		-- 			drop_shadow = true,
+		-- 			text_vertical_alignment = "top",
+		-- 			text_horizontal_alignment = "center",
+		-- 			text_color = Color.light_gray(255, true),
+		-- 			offset = { -50, 55, 2 },
+		-- 		},
+		-- 	},
+		-- 	{
+		-- 		pass_type = "text",
+		-- 		value_id = "self_mode_text",
+		-- 		value = "",
+		-- 		style = {
+		-- 			font_type = "proxima_nova_bold",
+		-- 			font_size = 19,
+		-- 			drop_shadow = true,
+		-- 			text_vertical_alignment = "top",
+		-- 			text_horizontal_alignment = "center",
+		-- 			text_color = Color.light_gray(255, true),
+		-- 			offset = { 50, 55, 2 },
+		-- 		},
+		-- 		visibility_function = function (content, style)
+		-- 			content.self_mode_text = mod:get("self_mode") and "包含自己" or "排除自己"
+		-- 			return true
+		-- 		end,
+		-- 	},
+		-- }, "jsj_area"),
   	}
 }
 

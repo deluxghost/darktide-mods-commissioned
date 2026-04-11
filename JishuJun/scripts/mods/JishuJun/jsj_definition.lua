@@ -225,7 +225,7 @@ local score_template = {
 		name = "random_build_trio",
 		display = "普通三通",
 		calc_func = function (data, timer, timer_min)
-			local calc_type = "金漩涡/其他"
+			local calc_type = "非浩劫"
 			local special_mul, melite_mul, relite_mul, boss_mul, timer_max, timer_mul = 150, 100, 120, 5, 50, 30
 			if Managers.mechanism and Managers.mechanism._mechanism and Managers.mechanism._mechanism._mechanism_data then
 				local mechanism_data = Managers.mechanism._mechanism._mechanism_data

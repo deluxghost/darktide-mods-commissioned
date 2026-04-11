@@ -11,12 +11,12 @@ local localization = {
 	enable_realtime = {
 		en = "启用实时显示",
 	},
-	self_mode = {
-		en = "包含自己的数据",
-	},
-	self_mode_description = {
-		en = "竞赛时，工作人员保持该选项关闭，可排除自己对统计产生干扰",
-	},
+	-- self_mode = {
+	-- 	en = "包含自己的数据",
+	-- },
+	-- self_mode_description = {
+	-- 	en = "竞赛时，工作人员保持该选项关闭，可排除自己对统计产生干扰",
+	-- },
 	score_template = {
 		en = "算分方案",
 	},
