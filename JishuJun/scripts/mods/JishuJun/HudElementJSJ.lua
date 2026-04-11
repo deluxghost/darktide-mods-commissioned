@@ -87,24 +87,24 @@ local definitions = {
 					offset = { -50, 55, 2 },
 				},
 			},
-			{
-				pass_type = "text",
-				value_id = "self_mode_text",
-				value = "",
-				style = {
-					font_type = "proxima_nova_bold",
-					font_size = 19,
-					drop_shadow = true,
-					text_vertical_alignment = "top",
-					text_horizontal_alignment = "center",
-					text_color = Color.light_gray(255, true),
-					offset = { 50, 55, 2 },
-				},
-				visibility_function = function (content, style)
-					content.self_mode_text = mod:get("self_mode") and "包含自己" or "排除自己"
-					return true
-				end,
-			},
+			-- {
+			-- 	pass_type = "text",
+			-- 	value_id = "self_mode_text",
+			-- 	value = "",
+			-- 	style = {
+			-- 		font_type = "proxima_nova_bold",
+			-- 		font_size = 19,
+			-- 		drop_shadow = true,
+			-- 		text_vertical_alignment = "top",
+			-- 		text_horizontal_alignment = "center",
+			-- 		text_color = Color.light_gray(255, true),
+			-- 		offset = { 50, 55, 2 },
+			-- 	},
+			-- 	visibility_function = function (content, style)
+			-- 		content.self_mode_text = mod:get("self_mode") and "包含自己" or "排除自己"
+			-- 		return true
+			-- 	end,
+			-- },
 		}, "jsj_area"),
   	}
 }
@@ -266,11 +266,12 @@ HudElementJSJ.update = function (self, dt, t, ui_renderer, render_settings, inpu
 	end
 
 	local data_table
-	if mod:get("self_mode") then
-		data_table = table.clone(mod.data)
-	else
-		data_table = table.clone(mod.data_noself)
-	end
+	-- if mod:get("self_mode") then
+	-- 	data_table = table.clone(mod.data)
+	-- else
+	-- 	data_table = table.clone(mod.data_noself)
+	-- end
+	data_table = table.clone(mod.data)
 
 	for _, def in ipairs(jsj_definition.dataset) do
 		local enable = mod:get("enable_realtime_" .. def.name)

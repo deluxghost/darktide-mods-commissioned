@@ -4,7 +4,7 @@ local UIViewHandler = mod:original_require("scripts/managers/ui/ui_view_handler"
 local jsj_definition = mod:io_dofile("JishuJun/scripts/mods/JishuJun/jsj_definition")
 local mission_node_definition = mod:io_dofile("JishuJun/scripts/mods/JishuJun/mission_node_definition")
 
-mod.version = "v12"
+mod.version = "v13"
 
 mod.enemy_health = mod:persistent_table("enemy_health")
 mod.cutscene_seen = mod:persistent_table("cutscene_seen")
@@ -31,6 +31,7 @@ local boss_breeds = {
 	"renegade_captain",
 	"renegade_twin_captain",
 	"renegade_twin_captain_two",
+	"chaos_ogryn_houndmaster",
 }
 local melee_elite_breeds = {
 	"cultist_berzerker",
@@ -68,6 +69,7 @@ local normal_special_breeds = {
 local weak_special_breeds = {
 	"chaos_hound_mutator",
 	"cultist_mutant_mutator",
+	"chaos_armored_hound",
 }
 
 mod.on_game_state_changed = function (status, state_name)
@@ -333,11 +335,12 @@ local function end_game_score(won)
 
 	local msg_list = { "本局详细数据：" }
 	local data_table
-	if mod:get("self_mode") then
-		data_table = table.clone(mod.data)
-	else
-		data_table = table.clone(mod.data_noself)
-	end
+	-- if mod:get("self_mode") then
+	-- 	data_table = table.clone(mod.data)
+	-- else
+	-- 	data_table = table.clone(mod.data_noself)
+	-- end
+	data_table = table.clone(mod.data)
 	for _, def in ipairs(jsj_definition.dataset) do
 		local enable = mod:get("enable_endgame_" .. def.name)
 		if enable then

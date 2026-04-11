@@ -73,7 +73,7 @@ mod.clear_old_dmg = function (uuid, t)
 	local dmg_list = mod.record.damage_list[uuid] or {}
 	local valid_dmgs = {}
 	for _, dmg_data in ipairs(dmg_list) do
-		if dmg_data.t >= t - 30 then
+		if dmg_data.t >= t - 15 then
 			valid_dmgs[#valid_dmgs+1] = dmg_data
 		end
 	end
@@ -312,7 +312,7 @@ mod:hook(CLASS.AttackReportManager, "add_attack_result", function(
 				end
 			end
 
-			if actual_damage > 0 then
+			if actual_damage > 0 and attack_type == "melee" then
 				mod.add_new_dmg(player_uuid, actual_damage, t)
 			end
 		end

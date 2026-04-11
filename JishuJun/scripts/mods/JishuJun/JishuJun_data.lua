@@ -12,11 +12,11 @@ local data = {
 				type = "checkbox",
 				default_value = true,
 			},
-			{
-				setting_id = "self_mode",
-				type = "checkbox",
-				default_value = false,
-			},
+			-- {
+			-- 	setting_id = "self_mode",
+			-- 	type = "checkbox",
+			-- 	default_value = false,
+			-- },
 		}
 	}
 }

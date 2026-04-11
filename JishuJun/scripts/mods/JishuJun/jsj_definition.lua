@@ -223,7 +223,7 @@ local dataset = {
 local score_template = {
 	{
 		name = "random_build_trio",
-		display = "随机 BD 三通",
+		display = "普通三通",
 		calc_func = function (data, timer, timer_min)
 			local calc_type = "金漩涡/其他"
 			local special_mul, melite_mul, relite_mul, boss_mul, timer_max, timer_mul = 150, 100, 120, 5, 50, 30
@@ -231,10 +231,10 @@ local score_template = {
 				local mechanism_data = Managers.mechanism._mechanism._mechanism_data
 				if mechanism_data.havoc_data then
 					calc_type = "浩劫"
-					special_mul, melite_mul, relite_mul, boss_mul, timer_max, timer_mul = 200, 100, 120, 3, 60, 20
-				elseif mechanism_data.circumstance_name == "flash_mission_07" or mechanism_data.circumstance_name == "high_flash_mission_07" then
-					calc_type = "近战大漩涡"
-					special_mul, melite_mul, relite_mul, boss_mul, timer_max, timer_mul = 200, 150, 0, 3, 50, 20
+					special_mul, melite_mul, relite_mul, boss_mul, timer_max, timer_mul = 200, 150, 120, 3, 60, 20
+				-- elseif mechanism_data.circumstance_name == "flash_mission_07" or mechanism_data.circumstance_name == "high_flash_mission_07" then
+				-- 	calc_type = "近战大漩涡"
+				-- 	special_mul, melite_mul, relite_mul, boss_mul, timer_max, timer_mul = 200, 150, 0, 3, 50, 20
 				end
 			end
 
