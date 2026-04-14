@@ -4,7 +4,7 @@ local UIViewHandler = mod:original_require("scripts/managers/ui/ui_view_handler"
 local jsj_definition = mod:io_dofile("JishuJun/scripts/mods/JishuJun/jsj_definition")
 local mission_node_definition = mod:io_dofile("JishuJun/scripts/mods/JishuJun/mission_node_definition")
 
-mod.version = "v13"
+mod.version = "v14"
 
 mod.enemy_health = mod:persistent_table("enemy_health")
 mod.cutscene_seen = mod:persistent_table("cutscene_seen")
@@ -29,9 +29,11 @@ local boss_breeds = {
 	"chaos_mutator_daemonhost",
 	"cultist_captain",
 	"renegade_captain",
+	"chaos_ogryn_houndmaster",
+}
+local twin_breeds = {
 	"renegade_twin_captain",
 	"renegade_twin_captain_two",
-	"chaos_ogryn_houndmaster",
 }
 local melee_elite_breeds = {
 	"cultist_berzerker",
@@ -315,6 +317,17 @@ mod.increase_data = function (name, value, is_self)
 	end
 end
 
+mod.dataset_enabled = function (name)
+	if jsj_definition.dataset_always[name] then
+		return true
+	end
+	local score_tmpl = mod.get_score_template()
+	if score_tmpl and score_tmpl.stats and score_tmpl.stats[name] then
+		return true
+	end
+	return mod:get("enable_force_" .. name)
+end
+
 mod:hook_safe(UIViewHandler, "close_view", function(self, view_name, force_close)
 	if view_name == "dmf_options_view" or view_name == "inventory_view" then
 		mod.recreate_hud()
@@ -342,7 +355,7 @@ local function end_game_score(won)
 	-- end
 	data_table = table.clone(mod.data)
 	for _, def in ipairs(jsj_definition.dataset) do
-		local enable = mod:get("enable_endgame_" .. def.name)
+		local enable = mod.dataset_enabled(def.name)
 		if enable then
 			local get_func = def.end_func and def.end_func or def.get_func
 			local data = get_func(data_table, timer, timer_min)
@@ -479,6 +492,8 @@ mod:hook(CLASS.AttackReportManager, "add_attack_result", function (
 						mod.increase_data("normal_special_kills", 1, is_self)
 					elseif table.array_contains(weak_special_breeds, breed_name) then
 						mod.increase_data("weak_special_kills", 1, is_self)
+					elseif table.array_contains(twin_breeds, breed_name) then
+						mod.increase_data("twin_kills", 1, is_self)
 					end
 				end
 				if actual_damage > 0 then

@@ -113,11 +113,11 @@ local data_passes = {}
 local num_data = 0
 local endgame_only_def = {}
 for _, def in ipairs(jsj_definition.dataset) do
-	local enable = mod:get("enable_realtime_" .. def.name)
-	local enable_endgame = mod:get("enable_endgame_" .. def.name)
-	if not enable and enable_endgame then
-		endgame_only_def[#endgame_only_def+1] = def
-	end
+	local enable = mod.dataset_enabled(def.name)
+	-- local enable_endgame = mod:get("enable_endgame_" .. def.name)
+	-- if not enable and enable_endgame then
+	-- 	endgame_only_def[#endgame_only_def+1] = def
+	-- end
 	if enable then
 		local offset_y = data_start_y + num_data * 25
 		num_data = num_data + 1
@@ -274,18 +274,18 @@ HudElementJSJ.update = function (self, dt, t, ui_renderer, render_settings, inpu
 	data_table = table.clone(mod.data)
 
 	for _, def in ipairs(jsj_definition.dataset) do
-		local enable = mod:get("enable_realtime_" .. def.name)
+		local enable = mod.dataset_enabled(def.name)
 		if enable then
 			local data = def.get_func(data_table, timer, timer_min)
 			local content = self._widgets_by_name.data_table.content
 			local style = self._widgets_by_name.data_table.style
 			content[def.name] = mod.format_data(data, def)
 
-			local enable_endgame = mod:get("enable_endgame_" .. def.name)
+			-- local enable_endgame = mod:get("enable_endgame_" .. def.name)
 			content[def.name .. "_title"] = style[def.name .. "_title"].orig_value
-			if enable_endgame then
-				content[def.name .. "_title"] = content[def.name .. "_title"] .. "{#color(0,255,0)}·{#reset}"
-			end
+			-- if enable_endgame then
+			-- 	content[def.name .. "_title"] = content[def.name .. "_title"] .. "{#color(0,255,0)}·{#reset}"
+			-- end
 		end
 	end
 

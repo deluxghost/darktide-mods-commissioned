@@ -35,19 +35,19 @@ for _, template in ipairs(jsj_definition.score_template) do
 end
 
 for _, def in ipairs(jsj_definition.dataset) do
-	localization["enable_realtime_" .. def.name] = {
-		en = "实时显示 " .. def.display,
+	localization["enable_force_" .. def.name] = {
+		en = "强制显示 " .. def.display,
 	}
-	localization["enable_endgame_" .. def.name] = {
-		en = "      结算显示 " .. def.display,
-	}
+	-- localization["enable_endgame_" .. def.name] = {
+	-- 	en = "      结算显示 " .. def.display,
+	-- }
 	if def.desc then
-		localization["enable_realtime_" .. def.name .. "_description"] = {
+		localization["enable_force_" .. def.name .. "_description"] = {
 			en = def.desc,
 		}
-		localization["enable_endgame_" .. def.name .. "_description"] = {
-			en = def.desc,
-		}
+		-- localization["enable_endgame_" .. def.name .. "_description"] = {
+		-- 	en = def.desc,
+		-- }
 	end
 end
 

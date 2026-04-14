@@ -30,13 +30,20 @@ local score_data = {
 	},
 }
 
+local score_template_map = {}
 for _, template in ipairs(jsj_definition.score_template) do
 	score_data.options[#score_data.options+1] = {
 		text = "score_template_" .. template.name,
 		value = template.name,
 	}
+	score_template_map[template.name] = true
 end
 data.options.widgets[#data.options.widgets+1] = score_data
+-- fallback option migration
+local current = mod:get("score_template") or "none"
+if score_template_map[current] == nil and current ~= "none" then
+	mod:set("score_template", "trio")
+end
 
 local group_data = {
 	setting_id = "data_group",
@@ -45,16 +52,13 @@ local group_data = {
 }
 
 for _, def in ipairs(jsj_definition.dataset) do
-	group_data.sub_widgets[#group_data.sub_widgets+1] = {
-		setting_id = "enable_realtime_" .. def.name,
-		type = "checkbox",
-		default_value = def.realtime_default,
-	}
-	group_data.sub_widgets[#group_data.sub_widgets+1] = {
-		setting_id = "enable_endgame_" .. def.name,
-		type = "checkbox",
-		default_value = def.endgame_default,
-	}
+	if not def.always then
+		group_data.sub_widgets[#group_data.sub_widgets+1] = {
+			setting_id = "enable_force_" .. def.name,
+			type = "checkbox",
+			default_value = def.force_default,
+		}
+	end
 end
 data.options.widgets[#data.options.widgets+1] = group_data
 
