@@ -208,7 +208,7 @@ local dataset = {
 	},
 	{
 		name = "weak_boss_damage",
-		display = "虚弱 Boss 伤害，不含双子",
+		display = "虚弱 Boss 伤害",
 		desc = "不含双子",
 		force_default = false,
 		-- endgame_default = false,
