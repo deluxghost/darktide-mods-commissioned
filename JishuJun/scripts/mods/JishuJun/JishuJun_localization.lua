@@ -11,6 +11,9 @@ local localization = {
 	enable_realtime = {
 		en = "启用实时显示",
 	},
+	debug_msg = {
+		en = "启用调试日志",
+	},
 	-- self_mode = {
 	-- 	en = "包含自己的数据",
 	-- },

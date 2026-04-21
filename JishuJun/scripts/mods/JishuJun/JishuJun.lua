@@ -4,7 +4,7 @@ local UIViewHandler = mod:original_require("scripts/managers/ui/ui_view_handler"
 local jsj_definition = mod:io_dofile("JishuJun/scripts/mods/JishuJun/jsj_definition")
 local mission_node_definition = mod:io_dofile("JishuJun/scripts/mods/JishuJun/mission_node_definition")
 
-mod.version = "v14"
+mod.version = "v14a"
 
 mod.enemy_health = mod:persistent_table("enemy_health")
 mod.cutscene_seen = mod:persistent_table("cutscene_seen")
@@ -309,6 +309,10 @@ mod.set_node_data = function (node1, node2, won)
 end
 
 mod.increase_data = function (name, value, is_self)
+	if mod:get("debug_msg") then
+		local msg = "[JSJ Inc] " .. name .. ", " .. tostring(value)
+		mod:info(msg)
+	end
 	mod.data[name] = mod.data[name] or 0
 	mod.data[name] = mod.data[name] + value
 	if not is_self then
@@ -453,6 +457,7 @@ mod:hook(CLASS.AttackReportManager, "add_attack_result", function (
 
 			-- accurate damage calculation
 			local actual_damage = 0
+			local old_health, husk_health, new_health = 0, 0, 0
 			if is_local_game then
 				if attack_result == "died" then
 					actual_damage = max_health - damage_taken + damage
@@ -460,14 +465,15 @@ mod:hook(CLASS.AttackReportManager, "add_attack_result", function (
 					actual_damage = damage
 				end
 			else
-				local old_health = mod.enemy_health[attacked_unit]
+				old_health = mod.enemy_health[attacked_unit]
 				-- should not happen, have to guess
 				if old_health == nil then
+					mod:info("enemy %s health missing", breed_name)
 					old_health = unit_health_extension:current_health()
 				end
 				-- cannot ensure current_health() order
-				local husk_health = unit_health_extension:current_health()
-				local new_health = (husk_health < old_health) and husk_health or (old_health - damage)
+				husk_health = unit_health_extension:current_health()
+				new_health = (husk_health < old_health) and husk_health or (old_health - damage)
 				new_health = math.max(new_health, 0)
 
 				if attack_result == "died" then
@@ -480,6 +486,21 @@ mod:hook(CLASS.AttackReportManager, "add_attack_result", function (
 			end
 
 			if player and mod.data and mod.data_noself then
+				if mod:get("debug_msg") then
+					local debug_msg = "[JSJ Debug] player: " .. player:name() ..
+						", breed: " .. breed_name ..
+						", profile: " .. damage_profile.name ..
+						", type: " .. tostring(attack_type) ..
+						", result: " .. attack_result ..
+						", damage: " .. damage ..
+						", actual: " .. actual_damage ..
+						", max_h: " .. max_health ..
+						", dmg_taken: " .. damage_taken ..
+						", old_h: " .. old_health ..
+						", husk_h: " .. husk_health ..
+						", new_h: " .. new_health
+					mod:info(debug_msg)
+				end
 				if attack_result == "died" then
 					if table.array_contains(ogryn_elite_breeds, breed_name) then
 						mod.increase_data("ogryn_elite_kills", 1, is_self)
@@ -498,7 +519,6 @@ mod:hook(CLASS.AttackReportManager, "add_attack_result", function (
 				end
 				if actual_damage > 0 then
 					if table.array_contains(boss_breeds, breed_name) then
-						local initial_max_health = Managers.state.difficulty:get_minion_max_health(breed_name)
 						mod.increase_data("boss_damage", actual_damage, is_self)
 						if mod.is_weakened(attacked_unit, breed) then
 							mod.increase_data("weak_boss_damage", actual_damage, is_self)
