@@ -4,13 +4,40 @@ local UIViewHandler = mod:original_require("scripts/managers/ui/ui_view_handler"
 local jsj_definition = mod:io_dofile("JishuJun/scripts/mods/JishuJun/jsj_definition")
 local mission_node_definition = mod:io_dofile("JishuJun/scripts/mods/JishuJun/mission_node_definition")
 
-mod.version = "v14a"
+mod.version = "v14c"
 
 mod.enemy_health = mod:persistent_table("enemy_health")
 mod.cutscene_seen = mod:persistent_table("cutscene_seen")
 mod.obj_record = mod:persistent_table("obj_record")
 mod.data = mod:persistent_table("data")
 mod.data_noself = mod:persistent_table("data_noself")
+
+mod.get_score_template = function ()
+	local score_template = mod:get("score_template") or "none"
+	if score_template == "none" then
+		return nil
+	end
+	local template
+	for _, t in ipairs(jsj_definition.score_template) do
+		if t.name == score_template then
+			template = t
+			break
+		end
+	end
+	return template
+end
+
+mod.dataset_enabled = function (name)
+	if jsj_definition.dataset_always[name] then
+		return true
+	end
+	local score_tmpl = mod.get_score_template()
+	if score_tmpl and score_tmpl.stats and score_tmpl.stats[name] then
+		return true
+	end
+	return mod:get("enable_force_" .. name)
+end
+
 mod:register_hud_element({
 	class_name = "HudElementJSJ",
 	filename = "JishuJun/scripts/mods/JishuJun/HudElementJSJ",
@@ -76,6 +103,7 @@ local weak_special_breeds = {
 
 mod.on_game_state_changed = function (status, state_name)
 	if state_name == "StateGameplay" and status == "enter" then
+		mod:info("JSJ Version: " .. mod.version)
 		for key in pairs(mod.enemy_health) do
 			mod.enemy_health[key] = nil
 		end
@@ -153,21 +181,6 @@ mod.recreate_hud = function ()
 			ui_manager:create_player_hud(peer_id, local_player_id, elements, visibility_groups)
 		end
 	end
-end
-
-mod.get_score_template = function ()
-	local score_template = mod:get("score_template") or "none"
-	if score_template == "none" then
-		return nil
-	end
-	local template
-	for _, t in ipairs(jsj_definition.score_template) do
-		if t.name == score_template then
-			template = t
-			break
-		end
-	end
-	return template
 end
 
 local function get_objective_group_id()
@@ -321,17 +334,6 @@ mod.increase_data = function (name, value, is_self)
 	end
 end
 
-mod.dataset_enabled = function (name)
-	if jsj_definition.dataset_always[name] then
-		return true
-	end
-	local score_tmpl = mod.get_score_template()
-	if score_tmpl and score_tmpl.stats and score_tmpl.stats[name] then
-		return true
-	end
-	return mod:get("enable_force_" .. name)
-end
-
 mod:hook_safe(UIViewHandler, "close_view", function(self, view_name, force_close)
 	if view_name == "dmf_options_view" or view_name == "inventory_view" then
 		mod.recreate_hud()
@@ -454,33 +456,59 @@ mod:hook(CLASS.AttackReportManager, "add_attack_result", function (
 			local breed_name = unit_data_extension:breed_name()
 			local damage_taken = unit_health_extension:damage_taken()
 			local max_health = unit_health_extension:max_health()
+			local clamp_mul = breed.clamp_health_percent_damage
+			local available_damage = damage
+			if clamp_mul then
+				available_damage = math.min(available_damage, max_health * clamp_mul)
+			end
+			local damage_was_clamped = available_damage ~= damage
 
 			-- accurate damage calculation
 			local actual_damage = 0
+			local actual_result = "damaged"
 			local old_health, husk_health, new_health = 0, 0, 0
 			if is_local_game then
-				if attack_result == "died" then
-					actual_damage = max_health - damage_taken + damage
+				new_health = max_health - damage_taken
+				old_health = new_health + available_damage
+				new_health = math.max(new_health, 0)
+				actual_damage = old_health - new_health
+				if damage_was_clamped then
+					if attack_result == "died" and new_health == 0 then
+						actual_result = "died"
+					end
 				else
-					actual_damage = damage
+					actual_result = attack_result
 				end
 			else
 				old_health = mod.enemy_health[attacked_unit]
+				-- cannot ensure current_health() order
+				husk_health = unit_health_extension:current_health()
 				-- should not happen, have to guess
 				if old_health == nil then
 					mod:info("enemy %s health missing", breed_name)
-					old_health = unit_health_extension:current_health()
+					old_health = husk_health
 				end
-				-- cannot ensure current_health() order
-				husk_health = unit_health_extension:current_health()
-				new_health = (husk_health < old_health) and husk_health or (old_health - damage)
+
+				local predicted_health = old_health - available_damage
+				if damage_was_clamped and attack_result == "died" and predicted_health <= 0 then
+					new_health = 0
+				else
+					new_health = (husk_health < old_health) and husk_health or predicted_health
+				end
 				new_health = math.max(new_health, 0)
 
-				if attack_result == "died" then
-					actual_damage = old_health
+				actual_damage = old_health - new_health
+				if damage_was_clamped then
+					if attack_result == "died" and new_health == 0 then
+						actual_result = "died"
+					end
+				else
+					actual_result = attack_result
+				end
+
+				if actual_result == "died" then
 					mod.enemy_health[attacked_unit] = nil
 				else
-					actual_damage = old_health - new_health
 					mod.enemy_health[attacked_unit] = new_health
 				end
 			end
@@ -492,7 +520,9 @@ mod:hook(CLASS.AttackReportManager, "add_attack_result", function (
 						", profile: " .. damage_profile.name ..
 						", type: " .. tostring(attack_type) ..
 						", result: " .. attack_result ..
+						", actual result: " .. actual_result ..
 						", damage: " .. damage ..
+						", avail damage: " .. available_damage ..
 						", actual: " .. actual_damage ..
 						", max_h: " .. max_health ..
 						", dmg_taken: " .. damage_taken ..
@@ -501,7 +531,7 @@ mod:hook(CLASS.AttackReportManager, "add_attack_result", function (
 						", new_h: " .. new_health
 					mod:info(debug_msg)
 				end
-				if attack_result == "died" then
+				if actual_result == "died" then
 					if table.array_contains(ogryn_elite_breeds, breed_name) then
 						mod.increase_data("ogryn_elite_kills", 1, is_self)
 					end
