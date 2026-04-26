@@ -4,13 +4,14 @@ local UIViewHandler = mod:original_require("scripts/managers/ui/ui_view_handler"
 local jsj_definition = mod:io_dofile("JishuJun/scripts/mods/JishuJun/jsj_definition")
 local mission_node_definition = mod:io_dofile("JishuJun/scripts/mods/JishuJun/mission_node_definition")
 
-mod.version = "v14c"
+mod.version = "v14d"
 
 mod.enemy_health = mod:persistent_table("enemy_health")
 mod.cutscene_seen = mod:persistent_table("cutscene_seen")
 mod.obj_record = mod:persistent_table("obj_record")
 mod.data = mod:persistent_table("data")
 mod.data_noself = mod:persistent_table("data_noself")
+mod.twin_units = mod:persistent_table("twin_units")
 
 mod.get_score_template = function ()
 	local score_template = mod:get("score_template") or "none"
@@ -54,14 +55,22 @@ local boss_breeds = {
 	"chaos_beast_of_nurgle",
 	"chaos_daemonhost",
 	"chaos_mutator_daemonhost",
+	"chaos_ogryn_houndmaster",
+}
+local captain_breeds = {
 	"cultist_captain",
 	"renegade_captain",
-	"chaos_ogryn_houndmaster",
 }
 local twin_breeds = {
 	"renegade_twin_captain",
 	"renegade_twin_captain_two",
 }
+local twin_death_exclude_damage_profiles = {
+	"kill_volume_and_off_navmesh",
+	"kill_volume_with_gibbing",
+	"default",
+}
+local twin_death_settle_delay = 0.5
 local melee_elite_breeds = {
 	"cultist_berzerker",
 	"renegade_berzerker",
@@ -118,6 +127,9 @@ mod.on_game_state_changed = function (status, state_name)
 		end
 		for key in pairs(mod.cutscene_seen) do
 			mod.cutscene_seen[key] = nil
+		end
+		for key in pairs(mod.twin_units) do
+			mod.twin_units[key] = nil
 		end
 	end
 end
@@ -340,10 +352,42 @@ mod:hook_safe(UIViewHandler, "close_view", function(self, view_name, force_close
 	end
 end)
 
+local function settle_twin_death(unit, twin_data)
+	if twin_data.settled then
+		return
+	end
+	if twin_data.dead and not twin_data.excluded then
+		mod.increase_data("twin_kills", 1, false)
+	end
+	twin_data.settled = true
+	twin_data.settle_time = nil
+end
+
+local function queue_twin_death_settlement(unit, twin_data)
+	if twin_data.settled then
+		return
+	end
+	if twin_data.dead and twin_data.excluded then
+		settle_twin_death(unit, twin_data)
+	elseif not twin_data.settle_time then
+		twin_data.settle_time = Managers.time:time("main") + twin_death_settle_delay
+	end
+end
+
+local function settle_twin_deaths(force)
+	local now = Managers.time:time("main")
+	for unit, twin_data in pairs(mod.twin_units) do
+		if twin_data.settle_time and not twin_data.settled and (force or now >= twin_data.settle_time) then
+			settle_twin_death(unit, twin_data)
+		end
+	end
+end
+
 local function end_game_score(won)
 	if mod.data.reported then
 		return
 	end
+	settle_twin_deaths(true)
 
 	local timer, timer_min = mod.data.raw_timer, nil
 	if timer then
@@ -420,31 +464,76 @@ local function player_from_unit(unit)
 	return nil
 end
 
+local function register_twin_unit(unit, force_new)
+	if not unit then
+		return
+	end
+	local unit_data_extension = ScriptUnit.has_extension(unit, "unit_data_system")
+	if not unit_data_extension then
+		return
+	end
+	local breed_name = unit_data_extension:breed_name()
+	if not table.array_contains(twin_breeds, breed_name) then
+		return
+	end
+	if mod.twin_units[unit] then
+		if force_new then
+			settle_twin_death(unit, mod.twin_units[unit])
+		else
+			return
+		end
+	end
+	mod.twin_units[unit] = {
+		breed_name = breed_name,
+		dead = false,
+		excluded = false,
+		settled = false,
+	}
+end
+
+local function update_twin_unit(unit)
+	register_twin_unit(unit)
+	local twin_data = mod.twin_units[unit]
+	if not twin_data or twin_data.dead then
+		return
+	end
+	if not HEALTH_ALIVE[unit] then
+		twin_data.dead = true
+		queue_twin_death_settlement(unit, twin_data)
+	end
+end
+
 mod:command("reload_jsj", mod:localize("刷新计数菌 HUD"), function ()
 	mod.recreate_hud()
 end)
 
+mod:hook_safe(CLASS.HealthExtension, "init", function (self, extension_init_context, unit, extension_init_data, game_object_data, ...)
+	register_twin_unit(unit, true)
+end)
+
+mod:hook_safe(CLASS.HealthExtension, "pre_update", function (self, unit, dt, t)
+	update_twin_unit(unit)
+end)
+
 mod:hook_safe(CLASS.HuskHealthExtension, "init", function (self, extension_init_context, unit, extension_init_data, game_session, game_object_id, owner_id, ...)
-	mod.enemy_health[unit] = self:max_health()
+	register_twin_unit(unit, true)
 end)
 
 mod:hook_safe(CLASS.HuskHealthExtension, "pre_update", function (self, unit, dt, t)
-	if not mod.enemy_health[unit] then
-		return
-	end
-	-- for enemy health regen
-	local saved_health = mod.enemy_health[unit]
-	local current_health = self:current_health()
-	if saved_health < current_health then
-		mod.enemy_health[unit] = current_health
-	end
+	update_twin_unit(unit)
 end)
+
+mod.update = function (dt)
+	for unit in pairs(mod.twin_units) do
+		update_twin_unit(unit)
+	end
+	settle_twin_deaths(false)
+end
 
 mod:hook(CLASS.AttackReportManager, "add_attack_result", function (
 		func, self, damage_profile, attacked_unit, attacking_unit, attack_direction, hit_world_position, hit_weakspot,
 		damage, attack_result, attack_type, damage_efficiency, ...
 	)
-	local is_local_game = mod.is_local_game()
 	local player = player_from_unit(attacking_unit)
 	local local_player = Managers.player:local_player(1)
 	local is_self = player and (player:account_id() == local_player:account_id()) or false
@@ -456,60 +545,21 @@ mod:hook(CLASS.AttackReportManager, "add_attack_result", function (
 			local breed_name = unit_data_extension:breed_name()
 			local damage_taken = unit_health_extension:damage_taken()
 			local max_health = unit_health_extension:max_health()
-			local clamp_mul = breed.clamp_health_percent_damage
-			local available_damage = damage
-			if clamp_mul then
-				available_damage = math.min(available_damage, max_health * clamp_mul)
+			local actual_damage = damage
+			if attack_result == "died" then
+				if mod.is_local_game() then
+					actual_damage = max_health - damage_taken + damage
+				else
+					actual_damage = max_health - damage_taken
+				end
 			end
-			local damage_was_clamped = available_damage ~= damage
 
-			-- accurate damage calculation
-			local actual_damage = 0
-			local actual_result = "damaged"
-			local old_health, husk_health, new_health = 0, 0, 0
-			if is_local_game then
-				new_health = max_health - damage_taken
-				old_health = new_health + available_damage
-				new_health = math.max(new_health, 0)
-				actual_damage = old_health - new_health
-				if damage_was_clamped then
-					if attack_result == "died" and new_health == 0 then
-						actual_result = "died"
-					end
-				else
-					actual_result = attack_result
-				end
-			else
-				old_health = mod.enemy_health[attacked_unit]
-				-- cannot ensure current_health() order
-				husk_health = unit_health_extension:current_health()
-				-- should not happen, have to guess
-				if old_health == nil then
-					mod:info("enemy %s health missing", breed_name)
-					old_health = husk_health
-				end
-
-				local predicted_health = old_health - available_damage
-				if damage_was_clamped and attack_result == "died" and predicted_health <= 0 then
-					new_health = 0
-				else
-					new_health = (husk_health < old_health) and husk_health or predicted_health
-				end
-				new_health = math.max(new_health, 0)
-
-				actual_damage = old_health - new_health
-				if damage_was_clamped then
-					if attack_result == "died" and new_health == 0 then
-						actual_result = "died"
-					end
-				else
-					actual_result = attack_result
-				end
-
-				if actual_result == "died" then
-					mod.enemy_health[attacked_unit] = nil
-				else
-					mod.enemy_health[attacked_unit] = new_health
+			if not player and attack_result == "died" and table.array_contains(twin_breeds, breed_name) and damage_profile and table.array_contains(twin_death_exclude_damage_profiles, damage_profile.name) then
+				register_twin_unit(attacked_unit)
+				local twin_data = mod.twin_units[attacked_unit]
+				if twin_data then
+					twin_data.excluded = true
+					queue_twin_death_settlement(attacked_unit, twin_data)
 				end
 			end
 
@@ -520,18 +570,13 @@ mod:hook(CLASS.AttackReportManager, "add_attack_result", function (
 						", profile: " .. damage_profile.name ..
 						", type: " .. tostring(attack_type) ..
 						", result: " .. attack_result ..
-						", actual result: " .. actual_result ..
 						", damage: " .. damage ..
-						", avail damage: " .. available_damage ..
 						", actual: " .. actual_damage ..
 						", max_h: " .. max_health ..
-						", dmg_taken: " .. damage_taken ..
-						", old_h: " .. old_health ..
-						", husk_h: " .. husk_health ..
-						", new_h: " .. new_health
+						", dmg_taken: " .. damage_taken
 					mod:info(debug_msg)
 				end
-				if actual_result == "died" then
+				if attack_result == "died" then
 					if table.array_contains(ogryn_elite_breeds, breed_name) then
 						mod.increase_data("ogryn_elite_kills", 1, is_self)
 					end
@@ -543,8 +588,6 @@ mod:hook(CLASS.AttackReportManager, "add_attack_result", function (
 						mod.increase_data("normal_special_kills", 1, is_self)
 					elseif table.array_contains(weak_special_breeds, breed_name) then
 						mod.increase_data("weak_special_kills", 1, is_self)
-					elseif table.array_contains(twin_breeds, breed_name) then
-						mod.increase_data("twin_kills", 1, is_self)
 					end
 				end
 				if actual_damage > 0 then
@@ -555,6 +598,8 @@ mod:hook(CLASS.AttackReportManager, "add_attack_result", function (
 						else
 							mod.increase_data("normal_boss_damage", actual_damage, is_self)
 						end
+					elseif table.array_contains(captain_breeds, breed_name) then
+						mod.increase_data("captain_damage", actual_damage, is_self)
 					end
 				end
 			end

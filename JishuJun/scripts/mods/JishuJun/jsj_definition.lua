@@ -185,7 +185,7 @@ local dataset = {
 	{
 		name = "boss_damage",
 		display = "Boss 伤害",
-		desc = "包含满血 Boss、虚弱 Boss，不含双子",
+		desc = "包含真血 Boss、虚弱 Boss，不含连长双子",
 		force_default = true,
 		-- endgame_default = true,
 		use_unit = true,
@@ -196,8 +196,8 @@ local dataset = {
 	},
 	{
 		name = "normal_boss_damage",
-		display = "满血 Boss 伤害",
-		desc = "不含双子",
+		display = "真血 Boss 伤害",
+		desc = "不含连长双子",
 		force_default = false,
 		-- endgame_default = false,
 		use_unit = true,
@@ -209,13 +209,24 @@ local dataset = {
 	{
 		name = "weak_boss_damage",
 		display = "虚弱 Boss 伤害",
-		desc = "不含双子",
+		desc = "不含连长双子",
 		force_default = false,
 		-- endgame_default = false,
 		use_unit = true,
 		format_func = format_func_template.float,
 		get_func = function (data, timer, timer_min)
 			return data.weak_boss_damage or 0
+		end,
+	},
+	{
+		name = "captain_damage",
+		display = "连长伤害",
+		force_default = false,
+		-- endgame_default = false,
+		use_unit = true,
+		format_func = format_func_template.float,
+		get_func = function (data, timer, timer_min)
+			return data.captain_damage or 0
 		end,
 	},
 	{
