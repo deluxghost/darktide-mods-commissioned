@@ -356,7 +356,15 @@ local function settle_twin_death(unit, twin_data)
 	if twin_data.settled then
 		return
 	end
-	if twin_data.dead and not twin_data.excluded then
+	local counted = twin_data.dead and twin_data.damaged_by_player and not twin_data.excluded
+	if mod:get("debug_msg") then
+		mod:info("[JSJ Twin] settle, breed: " .. tostring(twin_data.breed_name) ..
+			", dead: " .. tostring(twin_data.dead) ..
+			", damaged: " .. tostring(twin_data.damaged_by_player) ..
+			", excluded: " .. tostring(twin_data.excluded) ..
+			", counted: " .. tostring(counted))
+	end
+	if counted then
 		mod.increase_data("twin_kills", 1, false)
 	end
 	twin_data.settled = true
@@ -371,6 +379,12 @@ local function queue_twin_death_settlement(unit, twin_data)
 		settle_twin_death(unit, twin_data)
 	elseif not twin_data.settle_time then
 		twin_data.settle_time = Managers.time:time("main") + twin_death_settle_delay
+		if mod:get("debug_msg") then
+			mod:info("[JSJ Twin] queued, breed: " .. tostring(twin_data.breed_name) ..
+				", dead: " .. tostring(twin_data.dead) ..
+				", damaged: " .. tostring(twin_data.damaged_by_player) ..
+				", excluded: " .. tostring(twin_data.excluded))
+		end
 	end
 end
 
@@ -478,6 +492,14 @@ local function register_twin_unit(unit, force_new)
 	end
 	if mod.twin_units[unit] then
 		if force_new then
+			if mod:get("debug_msg") then
+				local twin_data = mod.twin_units[unit]
+				mod:info("[JSJ Twin] force new, old breed: " .. tostring(twin_data.breed_name) ..
+					", dead: " .. tostring(twin_data.dead) ..
+					", damaged: " .. tostring(twin_data.damaged_by_player) ..
+					", excluded: " .. tostring(twin_data.excluded) ..
+					", settled: " .. tostring(twin_data.settled))
+			end
 			settle_twin_death(unit, mod.twin_units[unit])
 		else
 			return
@@ -487,8 +509,12 @@ local function register_twin_unit(unit, force_new)
 		breed_name = breed_name,
 		dead = false,
 		excluded = false,
+		damaged_by_player = false,
 		settled = false,
 	}
+	if mod:get("debug_msg") then
+		mod:info("[JSJ Twin] registered, breed: " .. breed_name)
+	end
 end
 
 local function update_twin_unit(unit)
@@ -499,6 +525,11 @@ local function update_twin_unit(unit)
 	end
 	if not HEALTH_ALIVE[unit] then
 		twin_data.dead = true
+		if mod:get("debug_msg") then
+			mod:info("[JSJ Twin] dead, breed: " .. tostring(twin_data.breed_name) ..
+				", damaged: " .. tostring(twin_data.damaged_by_player) ..
+				", excluded: " .. tostring(twin_data.excluded))
+		end
 		queue_twin_death_settlement(unit, twin_data)
 	end
 end
@@ -554,11 +585,30 @@ mod:hook(CLASS.AttackReportManager, "add_attack_result", function (
 				end
 			end
 
+			if player and damage > 0 and table.array_contains(twin_breeds, breed_name) then
+				register_twin_unit(attacked_unit)
+				local twin_data = mod.twin_units[attacked_unit]
+				if twin_data and not twin_data.damaged_by_player then
+					twin_data.damaged_by_player = true
+					if mod:get("debug_msg") then
+						mod:info("[JSJ Twin] player damage, player: " .. player:name() ..
+							", breed: " .. breed_name ..
+							", profile: " .. damage_profile.name ..
+							", damage: " .. tostring(damage))
+					end
+				end
+			end
+
 			if not player and attack_result == "died" and table.array_contains(twin_breeds, breed_name) and damage_profile and table.array_contains(twin_death_exclude_damage_profiles, damage_profile.name) then
 				register_twin_unit(attacked_unit)
 				local twin_data = mod.twin_units[attacked_unit]
-				if twin_data then
+				if twin_data and not twin_data.excluded then
 					twin_data.excluded = true
+					if mod:get("debug_msg") then
+						mod:info("[JSJ Twin] excluded, breed: " .. breed_name ..
+							", profile: " .. damage_profile.name ..
+							", damage: " .. tostring(damage))
+					end
 					queue_twin_death_settlement(attacked_unit, twin_data)
 				end
 			end
