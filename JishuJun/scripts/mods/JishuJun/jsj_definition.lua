@@ -249,16 +249,17 @@ local score_template = {
 			melee_elite_kpm = true,
 			ranged_elite_kpm = true,
 			boss_damage = true,
+			captain_damage = true,
 			twin_kills = true,
 		},
 		calc_func = function (data, timer, timer_min)
 			local calc_type = "非浩劫"
-			local special_mul, melite_mul, relite_mul, boss_mul, timer_max, timer_mul = 150, 100, 120, 5, 50, 30
+			local special_mul, melite_mul, relite_mul, boss_mul, captain_mul, timer_max, timer_mul = 150, 100, 120, 5, 5, 50, 30
 			if Managers.mechanism and Managers.mechanism._mechanism and Managers.mechanism._mechanism._mechanism_data then
 				local mechanism_data = Managers.mechanism._mechanism._mechanism_data
 				if mechanism_data.havoc_data then
 					calc_type = "浩劫"
-					special_mul, melite_mul, relite_mul, boss_mul, timer_max, timer_mul = 150, 120, 100, 3, 60, 20
+					special_mul, melite_mul, relite_mul, boss_mul, captain_mul, timer_max, timer_mul = 150, 120, 100, 2.5, 3, 60, 20
 				-- elseif mechanism_data.circumstance_name == "flash_mission_07" or mechanism_data.circumstance_name == "high_flash_mission_07" then
 				-- 	calc_type = "近战大漩涡"
 				-- 	special_mul, melite_mul, relite_mul, boss_mul, timer_max, timer_mul = 200, 150, 0, 3, 50, 20
@@ -278,6 +279,7 @@ local score_template = {
 			score = score + ((data.melee_elite_kills or 0) / timer_min) * melite_mul
 			score = score + ((data.ranged_elite_kills or 0) / timer_min) * relite_mul
 			score = score + (data.boss_damage or 0) / 1000 * boss_mul
+			score = score + (data.captain_damage or 0) / 1000 * captain_mul
 			score = score + (timer_max - timer_min) * timer_mul
 			if (data.twin_kills or 0) >= 2 then
 				score = score + 300
